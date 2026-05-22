@@ -79,17 +79,6 @@
         "widgets": {
             "center": [
                 {
-                    "colorizeIcons": false,
-                    "hideMode": "hidden",
-                    "id": "ActiveWindow",
-                    "maxWidth": 145,
-                    "scrollingMode": "hover",
-                    "showIcon": true,
-                    "showText": true,
-                    "textColor": "none",
-                    "useFixedWidth": false
-                },
-                {
                     "characterCount": 2,
                     "colorizeIcons": false,
                     "emptyColor": "secondary",
@@ -128,10 +117,6 @@
                 }
             ],
             "left": [
-                {
-                    "iconColor": "none",
-                    "id": "NoctaliaPerformance"
-                },
                 {
                     "clockColor": "none",
                     "customFont": "",
@@ -262,7 +247,7 @@
         "manualSunrise": "06:30",
         "manualSunset": "18:30",
         "monitorForColors": "",
-        "predefinedScheme": "Noctalia (default)",
+        "predefinedScheme": "Gruvbox",
         "schedulingMode": "off",
         "syncGsettings": true,
         "useWallpaperColors": false
@@ -656,7 +641,7 @@
         "panelPosition": "follow_bar",
         "randomIntervalSec": 300,
         "setWallpaperOnAllMonitors": true,
-        "showHiddenFiles": false,
+        "showHiddenFiles": true,
         "skipStartupTransition": false,
         "solidColor": "#1a1a2e",
         "sortOrder": "name",

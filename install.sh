@@ -4,6 +4,8 @@ set -euo pipefail
 PROJECT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 NIRI_CONFIG_SOURCE="$PROJECT_DIR/niri-config"
 NIRI_CONFIG_TARGET="$HOME/.config/niri"
+NOCTALIA_CONFIG_SOURCE="$PROJECT_DIR/noctalia-config"
+NOCTALIA_CONFIG_TARGET="$HOME/.config/noctalia"
 
 log() {
     printf '\n==> %s\n' "$1"
@@ -75,6 +77,23 @@ install_niri_config() {
     cp -a "$NIRI_CONFIG_SOURCE/." "$NIRI_CONFIG_TARGET/"
 }
 
+install_noctalia_config() {
+    [[ -d "$NOCTALIA_CONFIG_SOURCE" ]] || return 0
+
+    mkdir -p "$HOME/.config"
+
+    if [[ -e "$NOCTALIA_CONFIG_TARGET" ]]; then
+        local backup_path
+        backup_path="$NOCTALIA_CONFIG_TARGET.backup.$(date +%Y%m%d-%H%M%S)"
+        log "Criando backup da configuracao atual do Noctalia em $backup_path"
+        cp -a "$NOCTALIA_CONFIG_TARGET" "$backup_path"
+    fi
+
+    log "Copiando configuracao do Noctalia deste projeto"
+    mkdir -p "$NOCTALIA_CONFIG_TARGET"
+    cp -a "$NOCTALIA_CONFIG_SOURCE/." "$NOCTALIA_CONFIG_TARGET/"
+}
+
 configure_external_monitor_brightness() {
     log "Configurando controle de brilho para monitores externos via DDC/CI"
 
@@ -133,6 +152,7 @@ main() {
     enable_repositories
     install_packages
     install_niri_config
+    install_noctalia_config
     configure_external_monitor_brightness
     set_gdm_default_session
 

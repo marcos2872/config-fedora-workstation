@@ -94,6 +94,48 @@ install_noctalia_config() {
     cp -a "$NOCTALIA_CONFIG_SOURCE/." "$NOCTALIA_CONFIG_TARGET/"
 }
 
+install_noctalia_polkit_plugin() {
+    local plugin_id="polkit-agent"
+    local plugin_repo="https://github.com/noctalia-dev/noctalia-plugins"
+    local plugin_target="$NOCTALIA_CONFIG_TARGET/plugins/$plugin_id"
+    local temp_dir
+
+    log "Instalando plugin Polkit Agent do Noctalia"
+    temp_dir="$(mktemp -d)"
+    trap 'rm -rf "$temp_dir"' RETURN
+
+    GIT_TERMINAL_PROMPT=0 git clone --filter=blob:none --sparse --depth=1 --quiet "$plugin_repo" "$temp_dir"
+    git -C "$temp_dir" sparse-checkout set "$plugin_id" >/dev/null
+
+    rm -rf "$plugin_target"
+    mkdir -p "$plugin_target"
+    cp -a "$temp_dir/$plugin_id/." "$plugin_target/"
+    rm -f "$plugin_target/settings.json"
+}
+
+disable_external_polkit_agents() {
+    log "Desativando agentes Polkit externos para usar o Noctalia"
+
+    pkill -x lxpolkit >/dev/null 2>&1 || true
+    pkill -x xfce-polkit >/dev/null 2>&1 || true
+    pkill -x polkit-mate-authentication-agent-1 >/dev/null 2>&1 || true
+    pkill -x polkit-gnome-authentication-agent-1 >/dev/null 2>&1 || true
+    pkill -x polkit-kde-authentication-agent-1 >/dev/null 2>&1 || true
+
+    mkdir -p "$HOME/.config/autostart"
+
+    local desktop_file
+    for desktop_file in \
+        lxpolkit.desktop \
+        xfce-polkit.desktop \
+        polkit-mate-authentication-agent-1.desktop \
+        polkit-gnome-authentication-agent-1.desktop \
+        org.kde.polkit-kde-authentication-agent-1.desktop
+    do
+        printf '[Desktop Entry]\nHidden=true\n' >"$HOME/.config/autostart/$desktop_file"
+    done
+}
+
 configure_external_monitor_brightness() {
     log "Configurando controle de brilho para monitores externos via DDC/CI"
 
@@ -153,6 +195,8 @@ main() {
     install_packages
     install_niri_config
     install_noctalia_config
+    install_noctalia_polkit_plugin
+    disable_external_polkit_agents
     configure_external_monitor_brightness
     set_gdm_default_session
 

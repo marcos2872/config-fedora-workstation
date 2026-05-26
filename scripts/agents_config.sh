@@ -3,8 +3,8 @@
 set -euo pipefail
 
 REPO_URL="https://github.com/marcos2872/agents-config"
-BASE_DIR="${HOME}/Projects"
-REPO_DIR="${BASE_DIR}/cofig"
+BASE_DIR="${HOME}/Config"
+REPO_DIR="${BASE_DIR}/agents-config"
 CONFIG_MODE="${1:-all}"
 
 log() {

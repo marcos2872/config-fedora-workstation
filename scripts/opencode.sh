@@ -6,7 +6,9 @@
 # Reference: https://opencode.ai/docs/pt-br/#instala%C3%A7%C3%A3o
 # ==============================================================================
 
-set -e
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 echo "╔════════════════════════════════════════════════════════════╗"
 echo "║ Installing OpenCode CLI                                    ║"
@@ -29,20 +31,17 @@ if ! command -v curl &> /dev/null; then
 fi
 
 # Check if gh CLI is already installed with opencode extension
-if command -v gh &> /dev/null && gh extension list 2>/dev/null | grep -q "opencode"; then
+if command -v opencode &> /dev/null; then
+    echo "✅ OpenCode CLI is already installed."
+elif command -v gh &> /dev/null && gh extension list 2>/dev/null | grep -q "opencode"; then
     echo "✅ OpenCode CLI extension is already installed."
-    echo ""
-    echo "╔════════════════════════════════════════════════════════════╗"
-    echo "║ ✅ OpenCode CLI Installation Complete                      ║"
-    echo "╚════════════════════════════════════════════════════════════╝"
-    echo ""
-    echo "You can use it with: gh opencode"
-    exit 0
+else
+    # Run the official OpenCode installer
+    echo "📦 Running the official OpenCode CLI installer..."
+    curl -fsSL https://opencode.ai/install | bash
 fi
 
-# Run the official OpenCode installer
-echo "📦 Running the official OpenCode CLI installer..."
-curl -fsSL https://opencode.ai/install | bash
+"${SCRIPT_DIR}/agents_config.sh" opencode
 
 echo ""
 echo "╔════════════════════════════════════════════════════════════╗"

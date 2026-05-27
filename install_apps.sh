@@ -41,6 +41,7 @@ run_script "brave.sh" "Instalando Brave Browser"
 run_script "chrome.sh" "Instalando Google Chrome"
 run_script "opencode.sh" "Instalando OpenCode CLI"
 run_script "discord.sh" "Instalando Discord"
+run_script "ssh_orchestrator.sh" "Instalando SSH Orchestrator"
 run_script "git_gh.sh" "Configurando Git e GH"
 
 echo -e "\n${GREEN}=== Instalação Completa! ===${NC}"

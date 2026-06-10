@@ -52,133 +52,61 @@ prepare_repo() {
   git clone "$REPO_URL" "$REPO_DIR"
 }
 
-link_config() {
+copy_config() {
   local source_path="$1"
   local target_path="$2"
   local backup_path
   local target_dir
-  local current_target
 
   [ -e "$source_path" ] || die "Origem nao encontrada: ${source_path}"
 
   target_dir="$(dirname "$target_path")"
   mkdir -p "$target_dir"
 
-  if [ -L "$target_path" ]; then
-    current_target="$(readlink "$target_path")"
-    if [ "$current_target" = "$source_path" ]; then
-      log "Symlink ja esta correto: ${target_path}"
-      return 0
-    fi
-
-    log "Removendo symlink antigo: ${target_path} -> ${current_target}"
-    rm "$target_path"
-  elif [ -e "$target_path" ]; then
+  if [ -e "$target_path" ] || [ -L "$target_path" ]; then
     backup_path="${target_path}.backup.$(date +%Y%m%d-%H%M%S)"
     log "Criando backup de ${target_path} em ${backup_path}"
     mv "$target_path" "$backup_path"
   fi
 
-  log "Criando symlink: ${target_path} -> ${source_path}"
-  ln -s "$source_path" "$target_path"
+  log "Copiando: ${source_path} -> ${target_path}"
+  cp -r "$source_path" "$target_path"
 }
 
 apply_zed_config() {
   log "Aplicando configuracao do Zed"
-  link_config "${REPO_DIR}/zed/settings.json" "${HOME}/.config/zed/settings.json"
-  link_config "${REPO_DIR}/zed/themes" "${HOME}/.config/zed/themes"
+  copy_config "${REPO_DIR}/zed/settings.json" "${HOME}/.config/zed/settings.json"
+  copy_config "${REPO_DIR}/zed/themes" "${HOME}/.config/zed/themes"
 }
 
-install_rtk() {
-  local rtk_bin=""
-
-  if command -v rtk >/dev/null 2>&1; then
-    rtk_bin="$(command -v rtk)"
-  elif [ -x "${HOME}/.local/bin/rtk" ]; then
-    rtk_bin="${HOME}/.local/bin/rtk"
-  else
-    log "Instalando RTK"
-    curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh
-
-    if command -v rtk >/dev/null 2>&1; then
-      rtk_bin="$(command -v rtk)"
-    elif [ -x "${HOME}/.local/bin/rtk" ]; then
-      rtk_bin="${HOME}/.local/bin/rtk"
-    else
-      log "AVISO: RTK foi instalado, mas o binario nao foi encontrado. Verifique se ~/.local/bin esta no PATH."
-      return 0
-    fi
-  fi
-
-  log "Inicializando RTK para OpenCode"
-  "$rtk_bin" init -g --opencode
-
-  case ":${PATH}:" in
-    *":${HOME}/.local/bin:"*) ;;
-    *) log "AVISO: ~/.local/bin nao esta no PATH atual. Adicione para usar rtk diretamente no terminal." ;;
-  esac
+apply_zed_skills() {
+  log "Aplicando skills globais do Zed Agent"
+  copy_config "${REPO_DIR}/opencode/skills/code-conventions" "${HOME}/.agents/skills/code-conventions"
+  copy_config "${REPO_DIR}/opencode/skills/doc" "${HOME}/.agents/skills/doc"
+  copy_config "${REPO_DIR}/opencode/skills/excalidraw" "${HOME}/.agents/skills/excalidraw"
+  copy_config "${REPO_DIR}/opencode/skills/git-commit-push" "${HOME}/.agents/skills/git-commit-push"
 }
 
-fix_opencode_mem() {
-  local log_file="${HOME}/.opencode-mem/opencode-mem.log"
-  local package_dir="${HOME}/.cache/opencode/packages/opencode-mem@latest"
-
-  if [ ! -f "$log_file" ]; then
-    log "Log do opencode-mem ainda nao existe; nenhum fix aplicado."
-    return 0
-  fi
-
-  if ! grep -Eq "Failed to initialize embedding model|sharp|Plugin warmup failed|Cannot find module '../build/Release/sharp-linux-x64.node'" "$log_file"; then
-    log "Nenhum erro conhecido do opencode-mem detectado."
-    return 0
-  fi
-
-  if [ ! -d "$package_dir" ]; then
-    log "AVISO: pacote opencode-mem ainda nao esta em cache (${package_dir}); rode OpenCode uma vez e execute este script novamente."
-    return 0
-  fi
-
-  if ! command -v npm >/dev/null 2>&1; then
-    log "AVISO: npm nao encontrado; fix do opencode-mem foi pulado. Execute scripts/node.sh e rode este script novamente."
-    return 0
-  fi
-
-  log "Aplicando fix do opencode-mem para sharp"
-  npm --prefix "$package_dir" install --ignore-scripts=false --foreground-scripts --platform=linux --arch=x64 sharp
-}
-
-apply_opencode_config() {
-  log "Aplicando configuracao do OpenCode"
-  link_config "${REPO_DIR}/opencode/agents" "${HOME}/.config/opencode/agents"
-  link_config "${REPO_DIR}/opencode/skills" "${HOME}/.config/opencode/skills"
-  link_config "${REPO_DIR}/opencode/plugins" "${HOME}/.config/opencode/plugins"
-  link_config "${REPO_DIR}/opencode/opencode.json" "${HOME}/.config/opencode/opencode.json"
-  link_config "${REPO_DIR}/opencode/opencode-mem.jsonc" "${HOME}/.config/opencode/opencode-mem.jsonc"
-
-  install_rtk
-  fix_opencode_mem
+apply_zed_agents() {
+  log "Aplicando agents globais do Zed Agent"
+  copy_config "${REPO_DIR}/opencode/agents/ask.md" "${HOME}/.agents/agents/ask.md"
+  copy_config "${REPO_DIR}/opencode/agents/geral.md" "${HOME}/.agents/agents/geral.md"
+  copy_config "${REPO_DIR}/opencode/agents/qa.md" "${HOME}/.agents/agents/qa.md"
+  copy_config "${REPO_DIR}/opencode/agents/quality.md" "${HOME}/.agents/agents/quality.md"
+  copy_config "${REPO_DIR}/opencode/agents/test.md" "${HOME}/.agents/agents/test.md"
 }
 
 main() {
   case "$CONFIG_MODE" in
-    all|zed|opencode) ;;
-    *) die "Modo invalido: ${CONFIG_MODE}. Use: all, zed ou opencode." ;;
+    all|zed) ;;
+    *) die "Modo invalido: ${CONFIG_MODE}. Use: all ou zed." ;;
   esac
 
   prepare_repo
 
-  case "$CONFIG_MODE" in
-    all)
-      apply_zed_config
-      apply_opencode_config
-      ;;
-    zed)
-      apply_zed_config
-      ;;
-    opencode)
-      apply_opencode_config
-      ;;
-  esac
+  apply_zed_config
+  apply_zed_skills
+  apply_zed_agents
 
   log "Configuracao aplicada com sucesso."
 }

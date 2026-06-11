@@ -107,6 +107,80 @@ Ou rode um script especifico:
 - `ssh_orchestrator.sh` nao tem pacote Arch nativo, entao baixa o `.deb` da release
   e extrai os arquivos com `bsdtar`. Nao e gerenciado pelo `pacman`.
 
+## Comandos basicos do CachyOS
+
+CachyOS e baseado em **Arch Linux** (*rolling release*), entao usa `pacman` como
+gerenciador de pacotes. Ja vem com o helper AUR `paru` e ferramentas proprias.
+
+### Atualizar o sistema
+
+```bash
+sudo pacman -Syu          # repos oficiais (sem AUR)
+paru                      # oficiais + AUR (ja vem no CachyOS)
+yay                       # oficiais + AUR (alternativa, instalada por scripts/yay.sh)
+flatpak update            # apps Flatpak
+paru && flatpak update    # atualiza tudo de uma vez
+```
+
+> Nunca faca atualizacao parcial (ex.: `pacman -Sy pacote`). Em rolling release
+> sempre use `-Syu` para evitar quebrar dependencias.
+
+### Pacotes (pacman)
+
+```bash
+sudo pacman -S pacote      # instalar
+sudo pacman -Rns pacote    # remover (com deps e configs orfas)
+pacman -Ss termo           # buscar nos repos
+pacman -Qs termo           # buscar entre os instalados
+pacman -Si pacote          # info de pacote no repo
+pacman -Qi pacote          # info de pacote instalado
+pacman -Ql pacote          # listar arquivos do pacote
+pacman -Qo /caminho/bin    # qual pacote e dono do arquivo
+pacman -Qe                 # pacotes instalados explicitamente
+```
+
+### AUR (paru / yay)
+
+```bash
+paru -S pacote-aur         # instalar do AUR
+paru -Ss termo             # buscar no AUR + repos
+paru -Sua                  # atualizar so pacotes do AUR
+```
+
+### Limpeza e manutencao
+
+```bash
+sudo pacman -Sc                          # limpa cache de pacotes antigos
+paccache -r                              # mantem so as 3 versoes mais recentes
+pacman -Qtdq | sudo pacman -Rns -        # remove pacotes orfaos
+sudo pacdiff                             # revisa arquivos .pacnew/.pacsave
+sudo fwupdmgr update                     # atualiza firmware (se aplicavel)
+```
+
+### Ferramentas especificas do CachyOS
+
+```bash
+sudo cachyos-rate-mirrors        # reordena mirrors pelos mais rapidos
+cachyos-hello                    # app de boas-vindas / pos-instalacao
+cachyos-kernel-manager           # gerenciador grafico de kernels
+sudo pacman -S linux-cachyos     # kernel otimizado do CachyOS
+cachyos-pkg-manager              # gerenciador grafico de pacotes (Octopi/afins)
+```
+
+> Os mirrors do CachyOS ficam em `/etc/pacman.d/cachyos-mirrorlist` e os do Arch em
+> `/etc/pacman.d/mirrorlist`. Rode `cachyos-rate-mirrors` se as atualizacoes estiverem
+> lentas.
+
+### Servicos (systemd)
+
+```bash
+systemctl status servico         # ver estado
+sudo systemctl enable --now srv  # habilitar e iniciar
+sudo systemctl restart servico   # reiniciar
+journalctl -xe                   # logs recentes do sistema
+journalctl -u servico -f         # acompanhar logs de um servico
+```
+
 ## Solucao de problemas
 
 ### Copilot CLI: `api.github.com` da timeout / token nao valida

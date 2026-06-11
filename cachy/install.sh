@@ -2,8 +2,9 @@
 set -euo pipefail
 
 # Instalador de configuracoes para CachyOS.
-# O CachyOS ja traz Niri e Noctalia; este script apenas aplica a config pessoal
-# deste repositorio em ~/.config (com backup) e ajustes opcionais.
+# O CachyOS ja traz Niri e Noctalia; este script aplica a config pessoal deste
+# repositorio em ~/.config (com backup) e faz ajustes opcionais (brilho DDC/CI e
+# tema do SDDM no estilo Noctalia, que instala a dependencia Qt6 necessaria).
 # A config do Noctalia ja inclui o plugin Polkit Agent (noctalia-config/plugins).
 
 PROJECT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
@@ -15,6 +16,11 @@ WALLPAPER_SOURCE="$PROJECT_DIR/wallpapers"
 WALLPAPER_TARGET="$HOME/Pictures/Wallpapers"
 # Wallpaper a ser definido por padrao (arquivo dentro de wallpapers/).
 DEFAULT_WALLPAPER="peakpx.jpg"
+# Tema do SDDM no estilo Noctalia (Qt6).
+SDDM_THEME_REPO="https://github.com/mahaveergurjar/sddm"
+SDDM_THEME_BRANCH="noctalia"
+SDDM_THEME_NAME="noctalia"
+SDDM_THEME_DIR="/usr/share/sddm/themes/$SDDM_THEME_NAME"
 
 log() {
     printf '\n==> %s\n' "$1"
@@ -100,15 +106,53 @@ EOF
     sudo udevadm trigger --subsystem-match=i2c-dev || true
 }
 
+install_sddm_theme() {
+    command -v sddm >/dev/null 2>&1 || command -v sddm-greeter-qt6 >/dev/null 2>&1 \
+        || { log "SDDM nao encontrado; pulando tema do SDDM"; return 0; }
+    command -v git >/dev/null 2>&1 || { log "git nao encontrado; pulando tema do SDDM"; return 0; }
+
+    log "Instalando tema Noctalia para o SDDM"
+
+    # Dependencia Qt6 exigida pelo tema (QtGraphicalEffects via qt6-5compat).
+    if command -v pacman >/dev/null 2>&1 && ! pacman -Qq qt6-5compat >/dev/null 2>&1; then
+        log "Instalando dependencia do tema: qt6-5compat"
+        sudo pacman -S --needed --noconfirm qt6-5compat
+    fi
+
+    local temp_dir
+    temp_dir="$(mktemp -d)"
+    trap 'rm -rf "$temp_dir"' RETURN
+
+    GIT_TERMINAL_PROMPT=0 git clone -b "$SDDM_THEME_BRANCH" --depth 1 --quiet "$SDDM_THEME_REPO" "$temp_dir/theme"
+    rm -rf "$temp_dir/theme/.git"
+
+    sudo rm -rf "$SDDM_THEME_DIR"
+    sudo mkdir -p /usr/share/sddm/themes
+    sudo cp -r "$temp_dir/theme" "$SDDM_THEME_DIR"
+
+    # Usa o wallpaper padrao como fundo do login, casando com a tela de bloqueio.
+    local wallpaper="$WALLPAPER_TARGET/$DEFAULT_WALLPAPER"
+    if [[ -f "$wallpaper" ]]; then
+        sudo cp "$wallpaper" "$SDDM_THEME_DIR/Assets/background.jpg"
+        sudo sed -i 's|^background=.*|background=Assets/background.jpg|' "$SDDM_THEME_DIR/theme.conf"
+    fi
+
+    # Ativa o tema sem alterar o /etc/sddm.conf existente.
+    sudo mkdir -p /etc/sddm.conf.d
+    printf '[Theme]\nCurrent=%s\n' "$SDDM_THEME_NAME" | sudo tee /etc/sddm.conf.d/theme.conf >/dev/null
+}
+
 main() {
     install_niri_config
     install_noctalia_config
     install_wallpapers
     set_default_wallpaper
+    install_sddm_theme
     configure_external_monitor_brightness
 
     log "Configuracao aplicada"
     printf 'Reinicie a sessao Niri (ou rode: niri msg action load-config-file) para aplicar.\n'
+    printf 'O tema do SDDM entra em vigor no proximo login (ou: sudo systemctl restart sddm).\n'
     printf 'Para brilho de monitor externo, saia e entre novamente para aplicar o grupo i2c.\n'
 }
 

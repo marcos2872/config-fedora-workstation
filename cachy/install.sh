@@ -4,6 +4,7 @@ set -euo pipefail
 # Instalador de configuracoes para CachyOS.
 # O CachyOS ja traz Niri e Noctalia; este script apenas aplica a config pessoal
 # deste repositorio em ~/.config (com backup) e ajustes opcionais.
+# A config do Noctalia ja inclui o plugin Polkit Agent (noctalia-config/plugins).
 
 PROJECT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 NIRI_CONFIG_SOURCE="$PROJECT_DIR/niri-config"
@@ -56,27 +57,6 @@ install_noctalia_config() {
     cp -a "$NOCTALIA_CONFIG_SOURCE/." "$NOCTALIA_CONFIG_TARGET/"
 }
 
-install_noctalia_polkit_plugin() {
-    command -v git >/dev/null 2>&1 || { log "git nao encontrado; pulando plugin Polkit do Noctalia"; return 0; }
-
-    local plugin_id="polkit-agent"
-    local plugin_repo="https://github.com/noctalia-dev/noctalia-plugins"
-    local plugin_target="$NOCTALIA_CONFIG_TARGET/plugins/$plugin_id"
-    local temp_dir
-
-    log "Instalando plugin Polkit Agent do Noctalia"
-    temp_dir="$(mktemp -d)"
-    trap 'rm -rf "$temp_dir"' RETURN
-
-    GIT_TERMINAL_PROMPT=0 git clone --filter=blob:none --sparse --depth=1 --quiet "$plugin_repo" "$temp_dir"
-    git -C "$temp_dir" sparse-checkout set "$plugin_id" >/dev/null
-
-    rm -rf "$plugin_target"
-    mkdir -p "$plugin_target"
-    cp -a "$temp_dir/$plugin_id/." "$plugin_target/"
-    rm -f "$plugin_target/settings.json"
-}
-
 install_wallpapers() {
     [[ -d "$WALLPAPER_SOURCE" ]] || return 0
     if ! find "$WALLPAPER_SOURCE" -type f ! -name 'README*' ! -name '.gitkeep' | grep -q .; then
@@ -123,7 +103,6 @@ EOF
 main() {
     install_niri_config
     install_noctalia_config
-    install_noctalia_polkit_plugin
     install_wallpapers
     set_default_wallpaper
     configure_external_monitor_brightness

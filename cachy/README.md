@@ -106,3 +106,59 @@ Ou rode um script especifico:
   `pacman` (oficiais) ou do AUR via `paru`/`yay`.
 - `ssh_orchestrator.sh` nao tem pacote Arch nativo, entao baixa o `.deb` da release
   e extrai os arquivos com `bsdtar`. Nao e gerenciado pelo `pacman`.
+
+## Solucao de problemas
+
+### Copilot CLI: `api.github.com` da timeout / token nao valida
+
+Sintoma (erros do `copilot`):
+
+```
+Error auto updating: Failed to fetch latest release: HttpError: ...
+  error sending request for url (https://api.github.com/repos/github/copilot-cli/releases/latest):
+  client error (Connect): tcp connect error: deadline has elapsed
+
+Authentication token found but could not be validated:
+  Failed to fetch OAuth user login: TypeError: fetch failed
+```
+
+**Causa:** nao e problema do Copilot nem das configs. O DNS resolve `api.github.com`
+para um IP da infra Azure do GitHub (ex.: `4.228.31.149`) que esta **inalcancavel a
+partir da rede** (ping com 100% de perda e TCP/443 em timeout = buraco de roteamento,
+geralmente no ISP). Curiosamente o `github.com` (IP vizinho) costuma funcionar, entao
+so a API quebra.
+
+**Diagnostico rapido:**
+
+```bash
+# Mostra o IP resolvido
+getent hosts api.github.com
+
+# Testa a conexao (se der timeout, o IP esta inalcancavel)
+curl -4 -sS -o /dev/null -w "http=%{http_code} t=%{time_total}s\n" --max-time 10 https://api.github.com/zen
+
+# Confirma que um IP classico do GitHub funciona
+curl -4 -sS --resolve api.github.com:443:140.82.112.6 https://api.github.com/zen
+```
+
+**Workaround:** fixar `api.github.com` em um IP classico e alcancavel do GitHub no
+`/etc/hosts`:
+
+```bash
+echo "140.82.112.6 api.github.com" | sudo tee -a /etc/hosts
+```
+
+Valide:
+
+```bash
+curl -sS https://api.github.com/zen   # deve responder uma frase (HTTP 200)
+```
+
+**Para reverter** (ex.: se o GitHub rotacionar IPs e a entrada ficar obsoleta):
+
+```bash
+sudo sed -i '/140.82.112.6 api.github.com/d' /etc/hosts
+```
+
+> Observacao: e um workaround. A correcao definitiva e o ISP arrumar a rota ate o IP
+> Azure do GitHub, ou rotear o trafego via VPN (ex.: um *exit node* do Tailscale).
